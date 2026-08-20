@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attack Sequence Trainer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root{
+    --bg: #131210;
+    --bg-vignette: radial-gradient(ellipse at 50% -10%, #24211a 0%, #131210 55%);
+    --card: #1c1a15;
+    --card-raised: #232019;
+    --parchment: #e7e0c9;
+    --parchment-dim: #b5ad93;
+    --ink: #1a1712;
+    --red: #7d2727;
+    --red-bright: #b23a3a;
+    --green: #4c6438;
+    --green-bright: #6d8a4e;
+    --gold: #c69a2e;
+    --gold-bright: #e8bc45;
+    --rule: #38341f;
+    --rule-soft: #2a271c;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg-vignette), var(--bg);
+    background-attachment:fixed;
+    color:var(--parchment);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  body{
+    display:flex;
+    justify-content:center;
+    padding:20px 14px 48px;
+  }
+
+  .app{
+    width:100%;
+    max-width:460px;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    margin-bottom:16px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--gold);
+    text-transform:uppercase;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:16px; height:2px;
+    background:var(--gold);
+    display:inline-block;
+  }
+  h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size:28px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    margin:0 0 4px;
+    color:var(--parchment);
+    line-height:1.05;
+  }
+  .subhead{
+    font-size:13px;
+    color:var(--parchment-dim);
+    margin:0;
+  }
+
+  .stat-row{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+  }
+  .stat-pill{
+    flex:1;
+    background:var(--card);
+    border:1px solid var(--rule);
+    border-radius:3px;
+    padding:8px 10px;
+    text-align:center;
+  }
+  .stat-pill .num{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:18px;
+    color:var(--gold-bright);
+    display:block;
+  }
+  .stat-pill .lbl{
+    font-size:9px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--parchment-dim);
+  }
+
+  /* ---------- Progress ---------- */
+  .progress{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin:16px 0 10px;
+  }
+  .progress .step{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:.08em;
+    padding:4px 8px;
+    border:1px solid var(--rule);
+    border-radius:2px;
+    color:var(--parchment-dim);
+    text-transform:uppercase;
+  }
+  .progress .step.active{
+    color:var(--ink);
+    background:var(--gold);
+    border-color:var(--gold);
+    font-weight:700;
+  }
+  .progress .arrow{ color:var(--rule); font-size:12px; }
+
+  /* ---------- Dossier card ---------- */
+  .dossier{
+    background:var(--card);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    overflow:hidden;
+    box-shadow:0 12px 30px -14px rgba(0,0,0,.6);
+  }
+  .dossier-head{
+    background:linear-gradient(90deg, #262117, #1c1912);
+    padding:12px 16px;
+    border-bottom:1px solid var(--rule);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .dossier-head .tag{
+    font-family:'Oswald', sans-serif;
+    font-size:13px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--parchment);
+  }
+  .dossier-head .code{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--parchment-dim);
+  }
+
+  .profile-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    border-bottom:1px solid var(--rule);
+  }
+  .profile-cell{
+    padding:14px 8px;
+    text-align:center;
+    border-right:1px solid var(--rule-soft);
+    transition:background .2s;
+  }
+  .profile-cell:last-child{ border-right:none; }
+  .profile-cell.highlight{
+    background:rgba(198,154,46,.09);
+  }
+  .profile-cell .val{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:22px;
+    color:var(--parchment);
+  }
+  .profile-cell.highlight .val{ color:var(--gold-bright); }
+  .profile-cell .key{
+    font-size:10px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--parchment-dim);
+    margin-top:2px;
+  }
+
+  /* ---------- Die ---------- */
+  .die-zone{
+    padding:26px 16px 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .die-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--parchment-dim);
+    margin-bottom:12px;
+  }
+  .die{
+    width:84px; height:84px;
+    background:var(--parchment);
+    border-radius:12px;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    padding:13px;
+    box-shadow:0 8px 0 -2px #a89f7f, 0 10px 18px rgba(0,0,0,.5);
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  .die.rolling{ transform:rotate(10deg) scale(1.04); }
+  .pip{
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pip::after{
+    content:"";
+    width:11px; height:11px;
+    border-radius:50%;
+    background:var(--ink);
+    opacity:0;
+    transform:scale(.4);
+    transition:opacity .25s ease .1s, transform .25s ease .1s;
+  }
+  .pip.on::after{ opacity:1; transform:scale(1); }
+  .die.unmodified{
+    outline:2px solid var(--gold);
+    outline-offset:3px;
+  }
+
+  .question{
+    font-family:'Oswald', sans-serif;
+    font-size:15px;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    text-align:center;
+    color:var(--parchment);
+    margin:14px 0 4px;
+    padding:0 20px;
+  }
+
+  /* ---------- Answers ---------- */
+  .answers{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding:14px 16px 16px;
+  }
+  .answer-btn{
+    font-family:'Oswald', sans-serif;
+    font-size:14px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    background:var(--card-raised);
+    border:1px solid var(--rule);
+    color:var(--parchment);
+    padding:13px 14px;
+    border-radius:3px;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    transition:border-color .15s, background .15s, transform .1s;
+  }
+  .answer-btn{ touch-action:manipulation; outline:none; }
+  @media (hover: hover) and (pointer: fine){
+    .answer-btn:hover:not(:disabled){
+      border-color:var(--gold);
+      background:#2a2519;
+    }
+  }
+  .answer-btn:active:not(:disabled){ transform:scale(.99); }
+  .answer-btn:disabled{ cursor:default; }
+  .answer-btn:focus{ outline:none; }
+  .answer-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+  @media (hover: none){
+    .answer-btn:focus-visible{ outline:none; }
+  }
+  .answer-btn .arrow-i{ color:var(--parchment-dim); font-size:12px; }
+
+  .answer-btn.correct{
+    background:rgba(76,100,56,.25);
+    border-color:var(--green-bright);
+    color:#d8e6c8;
+  }
+  .answer-btn.wrong{
+    background:rgba(125,39,39,.22);
+    border-color:var(--red-bright);
+    color:#f0c9c9;
+  }
+  .answer-btn.reveal-correct{
+    border-color:var(--green-bright);
+    box-shadow:inset 0 0 0 1px var(--green-bright);
+  }
+
+  /* ---------- Feedback ---------- */
+  .feedback{
+    margin:0 16px 16px;
+    border-radius:3px;
+    overflow:hidden;
+    display:none;
+  }
+  .feedback.show{ display:block; animation:slideIn .25s ease; }
+  @keyframes slideIn{ from{ opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);} }
+  .feedback-banner{
+    padding:10px 14px;
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    font-size:14px;
+  }
+  .feedback-banner.fails{ background:var(--red); color:#f6dede; }
+  .feedback-banner.hit{ background:var(--green); color:#e6f0da; }
+  .feedback-banner.crit{ background:var(--gold); color:#241d08; }
+  .feedback-body{
+    background:var(--card-raised);
+    padding:12px 14px;
+    font-size:13px;
+    line-height:1.5;
+    color:var(--parchment-dim);
+    border:1px solid var(--rule);
+    border-top:none;
+  }
+  .feedback-body b{ color:var(--parchment); font-weight:600; }
+
+  .next-btn{
+    width:100%;
+    margin-top:10px;
+    background:var(--gold);
+    color:var(--ink);
+    border:none;
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    font-size:14px;
+    padding:13px;
+    border-radius:3px;
+    cursor:pointer;
+    transition:background .15s, transform .1s;
+  }
+  .next-btn:hover{ background:var(--gold-bright); }
+  .next-btn:active{ transform:scale(.99); }
+
+  /* ---------- Reference ---------- */
+  .ref-toggle{
+    width:100%;
+    background:transparent;
+    border:1px dashed var(--rule);
+    color:var(--parchment-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:10px;
+    border-radius:3px;
+    cursor:pointer;
+    margin-top:16px;
+  }
+  .ref-toggle:hover{ color:var(--parchment); border-color:var(--parchment-dim); }
+
+  .reference{
+    display:none;
+    margin-top:10px;
+    background:var(--card);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    padding:14px 16px 16px;
+  }
+  .reference.show{ display:block; }
+  .reference h3{
+    font-family:'Oswald', sans-serif;
+    font-size:12px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:14px 0 6px;
+  }
+  .reference h3:first-child{ margin-top:0; }
+  .ref-line{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    padding:5px 0;
+    border-bottom:1px solid var(--rule-soft);
+    color:var(--parchment-dim);
+  }
+  .ref-line b{ color:var(--parchment); font-weight:500; }
+  .ref-line span.tagr{ color:var(--red-bright); }
+  .ref-line span.tagg{ color:var(--green-bright); }
+  .ref-line span.tagc{ color:var(--gold-bright); }
+
+  footer{
+    text-align:center;
+    margin-top:22px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:.08em;
+    color:var(--rule);
+    text-transform:uppercase;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .die, .feedback.show, .pip::after{ transition:none; animation:none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="eyebrow">Core Rules · Section 05</div>
+    <h1>Attack Sequence Trainer</h1>
+    <p class="subhead">Read the profile, read the die, call the result.</p>
+    <div class="stat-row">
+      <div class="stat-pill"><span class="num" id="scoreVal">0</span><span class="lbl">Correct</span></div>
+      <div class="stat-pill"><span class="num" id="attemptsVal">0</span><span class="lbl">Attempts</span></div>
+      <div class="stat-pill"><span class="num" id="streakVal">0</span><span class="lbl">Streak</span></div>
+    </div>
+  </header>
+
+  <div class="progress">
+    <div class="step" id="stepHit">1. Hit Rolls</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step" id="stepWound">2. Wound Rolls</div>
+  </div>
+
+  <div class="dossier">
+    <div class="dossier-head">
+      <span class="tag" id="dossierTag">Hit Roll</span>
+      <span class="code" id="dossierCode">05.01</span>
+    </div>
+    <div class="profile-grid">
+      <div class="profile-cell" id="cellBS">
+        <div class="val" id="bsVal">3+</div>
+        <div class="key">BS / WS</div>
+      </div>
+      <div class="profile-cell" id="cellS">
+        <div class="val" id="sVal">4</div>
+        <div class="key">Strength</div>
+      </div>
+      <div class="profile-cell" id="cellT">
+        <div class="val" id="tVal">4</div>
+        <div class="key">Toughness</div>
+      </div>
+    </div>
+
+    <div class="die-zone">
+      <div class="die-label" id="dieLabel">Unmodified D6 Result</div>
+      <div class="die" id="die"></div>
+    </div>
+
+    <p class="question" id="questionText">What does this roll resolve to?</p>
+
+    <div class="answers" id="answers"></div>
+
+    <div class="feedback" id="feedback">
+      <div class="feedback-banner" id="feedbackBanner"></div>
+      <div class="feedback-body" id="feedbackBody"></div>
+    </div>
+
+    <div style="padding:0 16px 16px;" id="nextWrap"></div>
+  </div>
+
+  <button class="ref-toggle" id="refToggle">Show Rules Reference</button>
+  <div class="reference" id="reference">
+    <h3>1. Hit Rolls — 05.01</h3>
+    <div class="ref-line"><b>Unmodified 1</b><span class="tagr">Fails</span></div>
+    <div class="ref-line"><b>Unmodified 6</b><span class="tagc">Critical Hit</span></div>
+    <div class="ref-line"><b>&ge; BS/WS characteristic</b><span class="tagg">Hit</span></div>
+    <div class="ref-line"><b>Any other result</b><span class="tagr">Fails</span></div>
+    <h3>2. Wound Rolls — 05.02</h3>
+    <div class="ref-line"><b>Unmodified 1</b><span class="tagr">Fails</span></div>
+    <div class="ref-line"><b>Unmodified 6</b><span class="tagc">Critical Wound</span></div>
+    <div class="ref-line"><b>Str &ge; 2&times; Tou</b><span class="tagg">2+</span></div>
+    <div class="ref-line"><b>Str &gt; Tou</b><span class="tagg">3+</span></div>
+    <div class="ref-line"><b>Str = Tou</b><span class="tagg">4+</span></div>
+    <div class="ref-line"><b>Str &lt; Tou</b><span class="tagg">5+</span></div>
+    <div class="ref-line"><b>Str &le; half Tou</b><span class="tagg">6+</span></div>
+  </div>
+
+  <footer>Attack Sequence Trainer · Practice Tool</footer>
+</div>
+
+<script>
+  const PIP_LAYOUTS = {
+    1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]
+  };
+
+  const state = { phase:'hit', bs:3, str:4, tou:4, roll:1, answered:false, score:0, attempts:0, streak:0 };
+
+  function rand(min,max){ return min + Math.floor(Math.random()*(max-min+1)); }
+
+  function newProfile(){
+    state.bs = rand(2,6);
+    state.str = rand(1,10);
+    state.tou = rand(1,10);
+  }
+  function newRoll(){ state.roll = rand(1,6); }
+
+  function woundRequired(){
+    const S=state.str, T=state.tou;
+    if (S>=2*T) return 2;
+    if (S>T) return 3;
+    if (S===T) return 4;
+    if (S*2<=T) return 6;
+    return 5;
+  }
+
+  function hitCorrectAnswer(){
+    const r = state.roll;
+    if (r===1) return 'FAILS';
+    if (r===6) return 'CRITICAL HIT';
+    if (r>=state.bs) return 'HIT';
+    return 'FAILS';
+  }
+  function woundCorrectAnswer(){
+    const r = state.roll;
+    if (r===1) return 'FAILS';
+    if (r===6) return 'CRITICAL WOUND';
+    return r>=woundRequired() ? 'WOUND' : 'FAILS';
+  }
+
+  function hitExplanation(){
+    const r=state.roll, bs=state.bs;
+    if (r===1) return `An unmodified <b>1</b> always fails, no matter the required BS/WS.`;
+    if (r===6) return `An unmodified <b>6</b> is always a critical hit.`;
+    if (r>=bs) return `The roll needed <b>${bs}+</b> to hit. A result of <b>${r}</b> meets that, so it's a hit.`;
+    return `The roll needed <b>${bs}+</b> to hit. A result of <b>${r}</b> falls short, so it fails.`;
+  }
+  function woundExplanation(){
+    const r=state.roll, S=state.str, T=state.tou;
+    if (r===1) return `An unmodified <b>1</b> always fails, regardless of Strength or Toughness.`;
+    if (r===6) return `An unmodified <b>6</b> is always a critical wound.`;
+    const req=woundRequired();
+    let relation;
+    if (S>=2*T) relation = `Strength <b>${S}</b> is twice or more Toughness <b>${T}</b>`;
+    else if (S>T) relation = `Strength <b>${S}</b> is greater than Toughness <b>${T}</b>`;
+    else if (S===T) relation = `Strength <b>${S}</b> equals Toughness <b>${T}</b>`;
+    else if (S*2<=T) relation = `Strength <b>${S}</b> is half or less of Toughness <b>${T}</b>`;
+    else relation = `Strength <b>${S}</b> is less than Toughness <b>${T}</b>`;
+    const outcome = r>=req ? `A result of <b>${r}</b> meets that, so it wounds.` : `A result of <b>${r}</b> falls short, so it fails.`;
+    return `${relation}, so this needs <b>${req}+</b> to wound. ${outcome}`;
+  }
+
+  function renderDie(){
+    const die = document.getElementById('die');
+    die.innerHTML = '';
+    const active = PIP_LAYOUTS[state.roll];
+    for(let i=0;i<9;i++){
+      const p = document.createElement('div');
+      p.className = 'pip' + (active.includes(i) ? ' on' : '');
+      die.appendChild(p);
+    }
+    die.classList.toggle('unmodified', state.roll===1 || state.roll===6);
+    die.classList.add('rolling');
+    setTimeout(()=>die.classList.remove('rolling'), 350);
+  }
+
+  function renderProfile(){
+    document.getElementById('bsVal').textContent = state.bs + '+';
+    document.getElementById('sVal').textContent = state.str;
+    document.getElementById('tVal').textContent = state.tou;
+    const isHit = state.phase==='hit';
+    document.getElementById('cellBS').classList.toggle('highlight', isHit);
+    document.getElementById('cellS').classList.toggle('highlight', !isHit);
+    document.getElementById('cellT').classList.toggle('highlight', !isHit);
+    document.getElementById('dossierTag').textContent = isHit ? 'Hit Roll' : 'Wound Roll';
+    document.getElementById('dossierCode').textContent = isHit ? '05.01' : '05.02';
+    document.getElementById('questionText').textContent = isHit
+      ? 'What does this roll resolve to?'
+      : 'What does this roll resolve to?';
+    document.getElementById('stepHit').classList.toggle('active', isHit);
+    document.getElementById('stepWound').classList.toggle('active', !isHit);
+  }
+
+  function bannerClass(result){
+    if (result==='FAILS') return 'fails';
+    if (result==='CRITICAL HIT' || result==='CRITICAL WOUND') return 'crit';
+    return 'hit';
+  }
+
+  function renderAnswers(){
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+
+    // Replace the whole container with a brand-new node (not just clear its
+    // contents) so no leftover focus/hover/active state from the previous
+    // round's buttons can carry over visually.
+    const oldWrap = document.getElementById('answers');
+    const wrap = document.createElement('div');
+    wrap.className = 'answers';
+    wrap.id = 'answers';
+    oldWrap.parentNode.replaceChild(wrap, oldWrap);
+
+    const options = state.phase==='hit'
+      ? ['FAILS','HIT','CRITICAL HIT']
+      : ['FAILS','WOUND','CRITICAL WOUND'];
+    options.forEach(opt=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'answer-btn';
+      btn.innerHTML = `<span>${opt}</span><span class="arrow-i">&rarr;</span>`;
+      btn.addEventListener('click', ()=>selectAnswer(opt));
+      wrap.appendChild(btn);
+    });
+    document.getElementById('feedback').classList.remove('show');
+    document.getElementById('nextWrap').innerHTML = '';
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+
+  function selectAnswer(choice){
+    if (state.answered) return;
+    state.answered = true;
+    const correct = state.phase==='hit' ? hitCorrectAnswer() : woundCorrectAnswer();
+    const isCorrect = choice===correct;
+    state.attempts++;
+    if (isCorrect){ state.score++; state.streak++; } else { state.streak = 0; }
+    document.getElementById('scoreVal').textContent = state.score;
+    document.getElementById('attemptsVal').textContent = state.attempts;
+    document.getElementById('streakVal').textContent = state.streak;
+
+    document.querySelectorAll('.answer-btn').forEach(btn=>{
+      const label = btn.querySelector('span').textContent;
+      btn.disabled = true;
+      if (label===correct) btn.classList.add('correct');
+      if (label===choice && !isCorrect) btn.classList.add('wrong');
+    });
+
+    const banner = document.getElementById('feedbackBanner');
+    const body = document.getElementById('feedbackBody');
+    banner.className = 'feedback-banner ' + bannerClass(correct);
+    banner.textContent = isCorrect ? `Correct — ${correct}` : `Not quite — ${correct}`;
+    body.innerHTML = state.phase==='hit' ? hitExplanation() : woundExplanation();
+    document.getElementById('feedback').classList.add('show');
+
+    document.getElementById('nextWrap').innerHTML = '';
+
+    if (isCorrect){
+      // Auto-advance shortly after a correct answer so the flow keeps moving.
+      setTimeout(()=>{
+        if (state.answered) advance();
+      }, 900);
+    } else {
+      // Wrong answers wait for the person to read the explanation first.
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'next-btn';
+      nextBtn.textContent = state.phase==='hit' ? 'Continue to Wound Roll' : 'Next Attack';
+      nextBtn.onclick = advance;
+      document.getElementById('nextWrap').appendChild(nextBtn);
+    }
+  }
+
+  function advance(){
+    if (state.phase==='hit'){
+      state.phase = 'wound';
+      newRoll();
+    } else {
+      state.phase = 'hit';
+      newProfile();
+      newRoll();
+    }
+    state.answered = false;
+    renderProfile();
+    renderDie();
+    renderAnswers();
+  }
+
+  document.getElementById('refToggle').onclick = ()=>{
+    const ref = document.getElementById('reference');
+    ref.classList.toggle('show');
+    document.getElementById('refToggle').textContent = ref.classList.contains('show') ? 'Hide Rules Reference' : 'Show Rules Reference';
+  };
+
+  // init
+  newProfile();
+  newRoll();
+  renderProfile();
+  renderDie();
+  renderAnswers();
+</script>
+</body>
+</html>
