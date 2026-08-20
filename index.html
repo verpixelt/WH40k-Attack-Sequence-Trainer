@@ -116,6 +116,7 @@
   .progress{
     display:flex;
     align-items:center;
+    flex-wrap:wrap;
     gap:6px;
     margin:16px 0 10px;
   }
@@ -136,6 +137,53 @@
     font-weight:700;
   }
   .progress .arrow{ color:var(--rule); font-size:12px; }
+
+  .seq-toggle{
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    cursor:pointer;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--parchment-dim);
+    user-select:none;
+  }
+  .seq-toggle input{
+    position:absolute;
+    opacity:0;
+    width:0; height:0;
+  }
+  .seq-toggle .switch{
+    width:30px; height:16px;
+    border:1px solid var(--rule);
+    border-radius:9px;
+    background:var(--card);
+    position:relative;
+    flex:none;
+    transition:background .15s, border-color .15s;
+  }
+  .seq-toggle .switch::after{
+    content:"";
+    position:absolute;
+    top:2px; left:2px;
+    width:10px; height:10px;
+    border-radius:50%;
+    background:var(--parchment-dim);
+    transition:transform .15s, background .15s;
+  }
+  .seq-toggle input:checked + .switch{
+    background:rgba(198,154,46,.2);
+    border-color:var(--gold);
+  }
+  .seq-toggle input:checked + .switch::after{
+    transform:translateX(14px);
+    background:var(--gold-bright);
+  }
+  .seq-toggle input:focus-visible + .switch{ outline:2px solid var(--gold); outline-offset:2px; }
+  .seq-toggle:hover{ color:var(--parchment); }
 
   /* ---------- Dossier card ---------- */
   .dossier{
@@ -437,6 +485,11 @@
     <div class="step" id="stepHit">1. Hit Rolls</div>
     <div class="arrow">&rarr;</div>
     <div class="step" id="stepWound">2. Wound Rolls</div>
+    <label class="seq-toggle" for="strictSeq" title="When on, a failed hit ends the attack — no wound roll follows.">
+      <input type="checkbox" id="strictSeq" checked>
+      <span class="switch"></span>
+      <span>Strict Sequence</span>
+    </label>
   </div>
 
   <div class="dossier">
@@ -501,7 +554,7 @@
     1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]
   };
 
-  const state = { phase:'hit', bs:3, str:4, tou:4, roll:1, answered:false, score:0, attempts:0, streak:0 };
+  const state = { phase:'hit', bs:3, str:4, tou:4, roll:1, answered:false, score:0, attempts:0, streak:0, strictSeq:true };
 
   function rand(min,max){ return min + Math.floor(Math.random()*(max-min+1)); }
 
@@ -535,12 +588,20 @@
     return r>=woundRequired() ? 'WOUND' : 'FAILS';
   }
 
+  function hitSucceeded(){ return hitCorrectAnswer() !== 'FAILS'; }
+  // With Strict Sequence on, a failed hit ends the attack — there is no wound
+  // roll to make. With it off, the wound roll is always practised anyway.
+  function hitEndsSequence(){ return state.strictSeq && !hitSucceeded(); }
+
   function hitExplanation(){
     const r=state.roll, bs=state.bs;
     if (r===1) return `An unmodified <b>1</b> always fails, no matter the required BS/WS.`;
     if (r===6) return `An unmodified <b>6</b> is always a critical hit.`;
     if (r>=bs) return `The roll needed <b>${bs}+</b> to hit. A result of <b>${r}</b> meets that, so it's a hit.`;
     return `The roll needed <b>${bs}+</b> to hit. A result of <b>${r}</b> falls short, so it fails.`;
+  }
+  function sequenceEndNote(){
+    return ` The attack sequence ends here — a failed hit never reaches the wound roll.`;
   }
   function woundExplanation(){
     const r=state.roll, S=state.str, T=state.tou;
@@ -642,7 +703,9 @@
     const body = document.getElementById('feedbackBody');
     banner.className = 'feedback-banner ' + bannerClass(isCorrect);
     banner.textContent = isCorrect ? `Correct — ${correct}` : `Not quite — ${correct}`;
-    body.innerHTML = state.phase==='hit' ? hitExplanation() : woundExplanation();
+    const hitEnds = state.phase==='hit' && hitEndsSequence();
+    body.innerHTML = (state.phase==='hit' ? hitExplanation() : woundExplanation())
+      + (hitEnds ? sequenceEndNote() : '');
     document.getElementById('feedback').classList.add('show');
 
     document.getElementById('nextWrap').innerHTML = '';
@@ -656,14 +719,14 @@
       // Wrong answers wait for the person to read the explanation first.
       const nextBtn = document.createElement('button');
       nextBtn.className = 'next-btn';
-      nextBtn.textContent = state.phase==='hit' ? 'Continue to Wound Roll' : 'Next Attack';
+      nextBtn.textContent = (state.phase==='hit' && !hitEnds) ? 'Continue to Wound Roll' : 'Next Attack';
       nextBtn.onclick = advance;
       document.getElementById('nextWrap').appendChild(nextBtn);
     }
   }
 
   function advance(){
-    if (state.phase==='hit'){
+    if (state.phase==='hit' && !hitEndsSequence()){
       state.phase = 'wound';
       newRoll();
     } else {
@@ -676,6 +739,26 @@
     renderDie();
     renderAnswers();
   }
+
+  // Flipping the toggle while a failed hit is on screen changes where the
+  // sequence goes next, so the note and the button label have to follow.
+  function refreshPendingHitOutcome(){
+    if (!state.answered || state.phase!=='hit' || hitSucceeded()) return;
+    const body = document.getElementById('feedbackBody');
+    body.innerHTML = hitExplanation() + (hitEndsSequence() ? sequenceEndNote() : '');
+    const nextBtn = document.querySelector('#nextWrap .next-btn');
+    if (nextBtn) nextBtn.textContent = hitEndsSequence() ? 'Next Attack' : 'Continue to Wound Roll';
+  }
+
+  const strictSeqInput = document.getElementById('strictSeq');
+  const savedStrict = localStorage.getItem('ast.strictSeq');
+  if (savedStrict !== null) state.strictSeq = savedStrict === 'true';
+  strictSeqInput.checked = state.strictSeq;
+  strictSeqInput.addEventListener('change', ()=>{
+    state.strictSeq = strictSeqInput.checked;
+    localStorage.setItem('ast.strictSeq', String(state.strictSeq));
+    refreshPendingHitOutcome();
+  });
 
   document.getElementById('refToggle').onclick = ()=>{
     const ref = document.getElementById('reference');
