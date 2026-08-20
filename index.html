@@ -185,6 +185,63 @@
   .seq-toggle input:focus-visible + .switch{ outline:2px solid var(--gold); outline-offset:2px; }
   .seq-toggle:hover{ color:var(--parchment); }
 
+  .seq-info{ position:relative; display:flex; align-items:center; }
+  .info-btn{
+    width:16px; height:16px;
+    padding:0;
+    border:1px solid var(--rule);
+    border-radius:50%;
+    background:var(--card);
+    color:var(--parchment-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    font-weight:700;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:color .15s, border-color .15s;
+  }
+  .info-btn:hover, .info-btn[aria-expanded="true"]{
+    color:var(--gold-bright);
+    border-color:var(--gold);
+  }
+  .info-btn:focus{ outline:none; }
+  .info-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+  .info-pop{
+    display:none;
+    position:absolute;
+    top:calc(100% + 8px);
+    right:0;
+    z-index:5;
+    width:250px;
+    max-width:75vw;
+    background:var(--card-raised);
+    border:1px solid var(--rule);
+    border-radius:3px;
+    padding:10px 12px;
+    font-family:'Inter', sans-serif;
+    font-size:12px;
+    line-height:1.5;
+    letter-spacing:normal;
+    text-transform:none;
+    color:var(--parchment-dim);
+    box-shadow:0 10px 24px -12px rgba(0,0,0,.8);
+  }
+  .info-pop.show{ display:block; animation:slideIn .18s ease; }
+  .info-pop b{ color:var(--parchment); font-weight:600; }
+  .info-pop::before{
+    content:"";
+    position:absolute;
+    top:-5px; right:5px;
+    width:8px; height:8px;
+    background:var(--card-raised);
+    border-left:1px solid var(--rule);
+    border-top:1px solid var(--rule);
+    transform:rotate(45deg);
+  }
+
   /* ---------- Dossier card ---------- */
   .dossier{
     background:var(--card);
@@ -485,11 +542,22 @@
     <div class="step" id="stepHit">1. Hit Rolls</div>
     <div class="arrow">&rarr;</div>
     <div class="step" id="stepWound">2. Wound Rolls</div>
-    <label class="seq-toggle" for="strictSeq" title="When on, a failed hit ends the attack — no wound roll follows.">
+    <label class="seq-toggle" for="strictSeq">
       <input type="checkbox" id="strictSeq" checked>
       <span class="switch"></span>
       <span>Strict Sequence</span>
     </label>
+    <span class="seq-info">
+      <button type="button" class="info-btn" id="seqInfoBtn"
+              aria-expanded="false" aria-controls="seqInfoPop"
+              aria-label="What does Strict Sequence do?">i</button>
+      <span class="info-pop" id="seqInfoPop" role="tooltip">
+        <b>On</b> — the attack follows the real sequence: a failed hit roll ends
+        it there, and no wound roll is made.<br>
+        <b>Off</b> — every attack goes on to a wound roll, so you keep drilling
+        both steps even when the hit misses.
+      </span>
+    </span>
   </div>
 
   <div class="dossier">
@@ -758,6 +826,22 @@
     state.strictSeq = strictSeqInput.checked;
     localStorage.setItem('ast.strictSeq', String(state.strictSeq));
     refreshPendingHitOutcome();
+  });
+
+  const seqInfoBtn = document.getElementById('seqInfoBtn');
+  const seqInfoPop = document.getElementById('seqInfoPop');
+  function setSeqInfo(open){
+    seqInfoPop.classList.toggle('show', open);
+    seqInfoBtn.setAttribute('aria-expanded', String(open));
+  }
+  seqInfoBtn.addEventListener('click', e=>{
+    e.stopPropagation();
+    setSeqInfo(!seqInfoPop.classList.contains('show'));
+  });
+  // Tapping anywhere else, or Escape, dismisses it — hover alone is no use on touch.
+  document.addEventListener('click', ()=>setSeqInfo(false));
+  document.addEventListener('keydown', e=>{
+    if (e.key==='Escape') setSeqInfo(false);
   });
 
   document.getElementById('refToggle').onclick = ()=>{
