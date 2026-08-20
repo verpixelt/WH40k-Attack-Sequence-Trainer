@@ -325,9 +325,8 @@
     text-transform:uppercase;
     font-size:14px;
   }
-  .feedback-banner.fails{ background:var(--red); color:#f6dede; }
-  .feedback-banner.hit{ background:var(--green); color:#e6f0da; }
-  .feedback-banner.crit{ background:var(--gold); color:#241d08; }
+  .feedback-banner.wrong-answer{ background:var(--red); color:#f6dede; }
+  .feedback-banner.correct-answer{ background:var(--green); color:#e6f0da; }
   .feedback-body{
     background:var(--card-raised);
     padding:12px 14px;
@@ -589,10 +588,8 @@
     document.getElementById('stepWound').classList.toggle('active', !isHit);
   }
 
-  function bannerClass(result){
-    if (result==='FAILS') return 'fails';
-    if (result==='CRITICAL HIT' || result==='CRITICAL WOUND') return 'crit';
-    return 'hit';
+  function bannerClass(isCorrect){
+    return isCorrect ? 'correct-answer' : 'wrong-answer';
   }
 
   function renderAnswers(){
@@ -643,7 +640,7 @@
 
     const banner = document.getElementById('feedbackBanner');
     const body = document.getElementById('feedbackBody');
-    banner.className = 'feedback-banner ' + bannerClass(correct);
+    banner.className = 'feedback-banner ' + bannerClass(isCorrect);
     banner.textContent = isCorrect ? `Correct — ${correct}` : `Not quite — ${correct}`;
     body.innerHTML = state.phase==='hit' ? hitExplanation() : woundExplanation();
     document.getElementById('feedback').classList.add('show');
